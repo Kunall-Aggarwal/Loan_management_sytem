@@ -25,6 +25,8 @@ SECRET_KEY = 'django-insecure-8=f4jy6f$e=8$1l1-r2=v10968)de6ub1x$#fjuw(b5zw_ns%b
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+CELERY_BROKER_URL = 'amqp://localhost'
+
 ALLOWED_HOSTS = []
 
 

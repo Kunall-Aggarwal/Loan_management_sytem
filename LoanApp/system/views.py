@@ -8,6 +8,7 @@ from .serializer import RegisterationSerializer, TransactionSerializer, LoanSeri
 from .models import Registeration, LoanApplied, TransactionData, EMI
 import uuid
 from django.db.models import Sum
+from .tasks import calculate_credit_score
 
 # Create your views here.
 
@@ -17,30 +18,36 @@ class RegisterUser(APIView):
         data = request.data
         serializer = RegisterationSerializer(data=data)
         if not serializer.is_valid():
-            return HttpResponse('Entries do not match')
+            return HttpResponse({'error':'Entries do not match'}, status=400)
+        
+        try:
+            user = Registeration.objects.get(aadhar = data['aadhar'])
+            if user:
+                return HttpResponse({'error':'User already exists'}, status=400)
+        except:
+            #   celery_task
+            # account_balance = 0
+            # credit_score = 0
 
-        #   celery_task
-        account_balance = 0
-        credit_score = 0
+            # if account_balance >= 1000000:
+            #     credit_score = 900
+            # elif account_balance <= 100000:
+            #     credit_score = 300
+            # else:
+            #     difference = account_balance - 100000
+            #     credit_score = 300 + (difference // 15000) * 10
 
-        if account_balance >= 1000000:
-            credit_score = 900
-        elif account_balance <= 100000:
-            credit_score = 300
-        else:
-            difference = account_balance - 100000
-            credit_score = 300 + (difference // 15000) * 10
+            calculate_credit_score.delay(data['aadhar'])
 
-        user = Registeration.objects.create(aadhar = data['aadhar'],
-                                            name = data['name'],
-                                            email = data['email'],
-                                            annual_income = data['annual_income'],
-                                            credit_score = credit_score)
+            user = Registeration.objects.create(aadhar = data['aadhar'],
+                                                name = data['name'],
+                                                email = data['email'],
+                                                annual_income = data['annual_income'])
 
-        user.save()
+            user.save()
         
         
-        return
+        return HttpResponse(status=200)
 
 
 
@@ -65,10 +72,10 @@ class ApplyLoan(APIView):
             return HttpResponse('No USER Found', status=400)
 
         if user_detail.credit_score < 450:
-            return HttpResponse('Credit score not sufficient')
+            return HttpResponse('Credit score not sufficient',status = 400)
         
         if user_detail.annual_income < Decimal(150000):
-            return HttpResponse('Annual income should be greater than or equal to 1,50,000')
+            return HttpResponse('Annual income should be greater than or equal to 1,50,000',status = 400)
         
         mapping = {
             "Car": 750000,
@@ -78,18 +85,18 @@ class ApplyLoan(APIView):
         }
 
         if loan_amount > mapping.get(loan_type, 0):
-            return HttpResponse('Loan Amount exceeds the maximum limit.')
+            return HttpResponse('Loan Amount exceeds the maximum limit.',status = 400)
     
         if data.get('interest_rate') < 14:
-            return HttpResponse('Interest rate should greater than or equal to 14')
+            return HttpResponse('Interest rate should greater than or equal to 14',status = 400)
         
         emi = ApplyLoan.calculate_emi(loan_amount, interest_rate, term_period)
         
         if not ApplyLoan.check_total_interest(emi, loan_amount, term_period):            
-            return HttpResponse('Total interest in less than 100000')
+            return HttpResponse('Total interest in less than 100000',status = 400)
         
         if not ApplyLoan.check_emi_criteria(emi, user_detail.annual_income/12):            
-            return HttpResponse('Monthly income does not meet the requirement')
+            return HttpResponse('Monthly income does not meet the requirement',status = 400)
         
 
 

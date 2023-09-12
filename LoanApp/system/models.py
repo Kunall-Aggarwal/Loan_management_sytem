@@ -7,7 +7,7 @@ import uuid
 class Registeration(models.Model):
 
     # unique_uer_id = models.CharField(primary_key = True, default = uuid.uuid4, editable = False, null = False)
-    aadhar = models.CharField(max_length=100, null = False)
+    aadhar = models.CharField(primary_key=True, max_length=100, null = False)
     name = models.CharField(max_length=50, null= False)
     email = models.EmailField(max_length=150, null=False)
     annual_income = models.DecimalField(max_digits=15, decimal_places=2,null=False)
