@@ -25,6 +25,15 @@ class RegisterUser(APIView):
             if user:
                 return HttpResponse({'error':'User already exists'}, status=400)
         except:
+            
+            user = Registeration.objects.create(aadhar = data['aadhar'],
+                                                name = data['name'],
+                                                email = data['email'],
+                                                annual_income = data['annual_income'])
+
+            user.save()
+
+
             #   celery_task
             # account_balance = 0
             # credit_score = 0
@@ -38,13 +47,6 @@ class RegisterUser(APIView):
             #     credit_score = 300 + (difference // 15000) * 10
 
             calculate_credit_score.delay(data['aadhar'])
-
-            user = Registeration.objects.create(aadhar = data['aadhar'],
-                                                name = data['name'],
-                                                email = data['email'],
-                                                annual_income = data['annual_income'])
-
-            user.save()
         
         
         return HttpResponse(status=200)
